@@ -1,74 +1,94 @@
 import pygame
-import random
+import sys
 
 # Initialize pygame
 pygame.init()
 
-# Screen dimensions
-WIDTH, HEIGHT = 600, 400
+# Screen settings
+WIDTH, HEIGHT = 800, 600
 win = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Dodge the Falling Blocks")
+pygame.display.set_caption("Pong Game")
 
 # Colors
 WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-BLUE = (0, 0, 255)
+BLACK = (0, 0, 0)
 
-# Clock
-clock = pygame.time.Clock()
+# Paddle settings
+PADDLE_WIDTH, PADDLE_HEIGHT = 10, 100
+paddle_speed = 7
 
-# Player settings
-player_size = 50
-player_pos = [WIDTH // 2, HEIGHT - player_size]
+# Ball settings
+BALL_SIZE = 20
+ball_speed_x = 5
+ball_speed_y = 5
 
-# Enemy settings
-enemy_size = 50
-enemy_pos = [random.randint(0, WIDTH - enemy_size), 0]
-enemy_speed = 10
+# Initialize positions
+left_paddle = pygame.Rect(10, HEIGHT // 2 - PADDLE_HEIGHT // 2, PADDLE_WIDTH, PADDLE_HEIGHT)
+right_paddle = pygame.Rect(WIDTH - 20, HEIGHT // 2 - PADDLE_HEIGHT // 2, PADDLE_WIDTH, PADDLE_HEIGHT)
+ball = pygame.Rect(WIDTH // 2 - BALL_SIZE // 2, HEIGHT // 2 - BALL_SIZE // 2, BALL_SIZE, BALL_SIZE)
+
+# Score
+left_score = 0
+right_score = 0
+font = pygame.font.SysFont(None, 50)
 
 # Game loop
-game_over = False
-score = 0
-font = pygame.font.SysFont("monospace", 35)
+clock = pygame.time.Clock()
+running = True
 
-def detect_collision(player_pos, enemy_pos):
-    px, py = player_pos
-    ex, ey = enemy_pos
-    return (
-        ex < px + player_size and
-        ex + enemy_size > px and
-        ey < py + player_size and
-        ey + enemy_size > py
-    )
-
-while not game_over:
+while running:
+    clock.tick(60)  # 60 FPS
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            game_over = True
+            running = False
 
+    # Input handling
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT] and player_pos[0] > 0:
-        player_pos[0] -= 10
-    if keys[pygame.K_RIGHT] and player_pos[0] < WIDTH - player_size:
-        player_pos[0] += 10
+    if keys[pygame.K_w] and left_paddle.top > 0:
+        left_paddle.y -= paddle_speed
+    if keys[pygame.K_s] and left_paddle.bottom < HEIGHT:
+        left_paddle.y += paddle_speed
+    if keys[pygame.K_UP] and right_paddle.top > 0:
+        right_paddle.y -= paddle_speed
+    if keys[pygame.K_DOWN] and right_paddle.bottom < HEIGHT:
+        right_paddle.y += paddle_speed
 
-    enemy_pos[1] += enemy_speed
-    if enemy_pos[1] > HEIGHT:
-        enemy_pos[1] = 0
-        enemy_pos[0] = random.randint(0, WIDTH - enemy_size)
-        score += 1
+    # Ball movement
+    ball.x += ball_speed_x
+    ball.y += ball_speed_y
 
-    if detect_collision(player_pos, enemy_pos):
-        game_over = True
+    # Ball collision with top/bottom
+    if ball.top <= 0 or ball.bottom >= HEIGHT:
+        ball_speed_y *= -1
 
-    win.fill(WHITE)
-    text = font.render(f"Score: {score}", True, (0, 0, 0))
-    win.blit(text, (10, 10))
+    # Ball collision with paddles
+    if ball.colliderect(left_paddle) or ball.colliderect(right_paddle):
+        ball_speed_x *= -1
 
-    pygame.draw.rect(win, BLUE, (*player_pos, player_size, player_size))
-    pygame.draw.rect(win, RED, (*enemy_pos, enemy_size, enemy_size))
+    # Scoring
+    if ball.left <= 0:
+        right_score += 1
+        ball.center = (WIDTH // 2, HEIGHT // 2)
+        ball_speed_x *= -1
+    if ball.right >= WIDTH:
+        left_score += 1
+        ball.center = (WIDTH // 2, HEIGHT // 2)
+        ball_speed_x *= -1
 
-    pygame.display.update()
-    clock.tick(30)
+    # Drawing
+    win.fill(BLACK)
+    pygame.draw.rect(win, WHITE, left_paddle)
+    pygame.draw.rect(win, WHITE, right_paddle)
+    pygame.draw.ellipse(win, WHITE, ball)
+    pygame.draw.aaline(win, WHITE, (WIDTH // 2, 0), (WIDTH // 2, HEIGHT))
+
+    # Display score
+    left_text = font.render(str(left_score), True, WHITE)
+    right_text = font.render(str(right_score), True, WHITE)
+    win.blit(left_text, (WIDTH // 4, 20))
+    win.blit(right_text, (WIDTH * 3 // 4, 20))
+
+    pygame.display.flip()
 
 pygame.quit()
+sys.exit()
